@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Slither.ionline</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --panel:#141a2b; --panel2:#1c2440; --line:#2a3458;
+    --text:#eef2ff; --muted:#93a0c8; --accent:#3ee6a8; --accent2:#9b5cff; --gold:#ffd23f; --danger:#ff5a6a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+    font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+  canvas#c{position:fixed;inset:0;display:block;touch-action:none}
+  button{font:inherit;cursor:pointer;border:none;color:inherit}
+  input{font:inherit}
+  .screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:16px;
+    background:radial-gradient(ellipse at center,rgba(11,15,26,.55),rgba(11,15,26,.88));z-index:10;overflow:auto}
+  .screen.on{display:flex}
+  .card{background:rgba(20,26,43,.92);border:1px solid var(--line);border-radius:22px;padding:28px;width:100%;max-width:440px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);backdrop-filter:blur(6px)}
+  .card.wide{max-width:900px}
+  .logo{font-size:44px;font-weight:900;letter-spacing:-1px;text-align:center;line-height:1}
+  .logo span{background:linear-gradient(90deg,var(--accent),#00d1ff,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);text-align:center;margin:8px 0 22px;font-size:14px}
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 16px;border-radius:14px;
+    font-weight:700;font-size:16px;margin-top:10px;transition:transform .08s,filter .15s}
+  .btn:hover{filter:brightness(1.12)} .btn:active{transform:scale(.97)}
+  .btn.primary{background:linear-gradient(90deg,#2fd89b,#17b8d6);color:#05121a}
+  .btn.violet{background:linear-gradient(90deg,#8b5cff,#c04bff);color:#fff}
+  .btn.ghost{background:var(--panel2);border:1px solid var(--line)}
+  .btn.google{background:#fff;color:#1f1f1f}
+  .btn.apple{background:#000;color:#fff;border:1px solid #333}
+  .btn.claude{background:#d97757;color:#fff}
+  .btn svg{width:20px;height:20px}
+  .row{display:flex;gap:10px} .row .btn{flex:1}
+  .note{font-size:12px;color:var(--muted);text-align:center;margin-top:16px;line-height:1.5}
+  .field{width:100%;padding:13px 16px;border-radius:14px;background:#0d1222;border:1px solid var(--line);color:var(--text);
+    font-size:17px;text-align:center;outline:none}
+  .field:focus{border-color:var(--accent)}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:10px;flex-wrap:wrap}
+  .coins{display:inline-flex;align-items:center;gap:6px;background:#2a2410;border:1px solid #5a4a12;color:var(--gold);
+    padding:6px 12px;border-radius:999px;font-weight:800}
+  .coin-ic{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3a8,#ffcc00 50%,#c98f00);display:inline-block}
+  .acct{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .acct b{color:var(--text)}
+  .link{background:none;color:var(--muted);text-decoration:underline;font-size:12px;padding:0}
+  h2{font-size:24px;font-weight:900}
+  h3{font-size:14px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:18px 0 10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+  .item{background:var(--panel2);border:2px solid transparent;border-radius:14px;padding:10px;text-align:center;position:relative}
+  .item canvas{width:100%;height:60px;display:block}
+  .item .nm{font-weight:700;font-size:14px;margin-top:6px}
+  .item .pr{font-size:13px;color:var(--gold);margin-top:4px;display:flex;align-items:center;justify-content:center;gap:4px}
+  .item.sel{border-color:var(--accent)}
+  .item.locked{opacity:.45}
+  .item .mini{margin-top:8px;padding:7px;border-radius:10px;font-size:13px;font-weight:700;width:100%}
+  .mini.buy{background:var(--gold);color:#241a00}
+  .mini.buy:disabled{background:#4a4430;color:#8c8466;cursor:not-allowed}
+  .mini.eq{background:var(--accent);color:#04140e}
+  .mini.on{background:#24304f;color:var(--muted);cursor:default}
+  .tabs{display:flex;gap:6px;background:#0d1222;padding:5px;border-radius:14px;margin-bottom:6px}
+  .tab{flex:1;padding:9px;border-radius:10px;background:transparent;color:var(--muted);font-weight:700}
+  .tab.on{background:var(--panel2);color:var(--text)}
+  .custom-wrap{display:grid;grid-template-columns:1fr 1.3fr;gap:20px}
+  @media(max-width:760px){.custom-wrap{grid-template-columns:1fr}}
+  #prev{width:100%;height:220px;background:#0d1222;border-radius:16px;border:1px solid var(--line)}
+  .scroll{max-height:60vh;overflow:auto;padding-right:4px}
+  /* HUD */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5;display:none}
+  #hud.on{display:block}
+  #lb{position:absolute;top:12px;right:12px;background:rgba(10,14,26,.6);border-radius:12px;padding:10px 12px;min-width:190px;font-size:13px}
+  #lb .t{font-weight:900;margin-bottom:6px;color:var(--muted);font-size:12px;letter-spacing:1px}
+  #lb .r{display:flex;justify-content:space-between;gap:12px;padding:1px 0}
+  #lb .r.me{color:var(--accent);font-weight:800}
+  #stats{position:absolute;left:14px;bottom:14px;font-size:15px;text-shadow:0 1px 3px #000;line-height:1.5}
+  #stats b{font-size:20px}
+  #mm{position:absolute;right:14px;bottom:14px;width:130px;height:130px}
+  #netst{position:absolute;top:12px;left:12px;background:rgba(10,14,26,.6);border-radius:10px;padding:6px 10px;font-size:12px;display:none}
+  #exitbtn{position:absolute;top:12px;left:50%;transform:translateX(-50%);pointer-events:auto;background:rgba(10,14,26,.6);
+    padding:6px 14px;border-radius:999px;font-size:13px;color:var(--muted)}
+  #boostbtn{position:absolute;left:20px;bottom:90px;width:74px;height:74px;border-radius:50%;background:rgba(62,230,168,.25);
+    border:2px solid rgba(62,230,168,.6);pointer-events:auto;display:none;font-weight:900;font-size:13px}
+  .touch #boostbtn{display:block}
+  #toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1c2440;border:1px solid var(--line);
+    padding:10px 16px;border-radius:12px;z-index:50;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center}
+  #toast.on{opacity:1}
+  .big{font-size:52px;font-weight:900;text-align:center}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+  .modal.on{display:flex}
+  code{background:#0d1222;padding:2px 6px;border-radius:6px;font-size:12px}
+  #gbox{display:flex;justify-content:center;margin-top:12px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="netst"></div>
+  <button id="exitbtn">✕ Salir</button>
+  <div id="lb"><div class="t">CLASIFICACIÓN</div><div id="lbrows"></div></div>
+  <div id="stats">Longitud: <b id="hs">0</b><br><span id="hr"></span></div>
+  <canvas id="mm" width="260" height="260"></canvas>
+  <button id="boostbtn">TURBO</button>
+</div>
+
+<!-- LOGIN -->
+<div class="screen" id="s-login">
+  <div class="card">
+    <div class="logo"><span>slither</span>.ionline</div>
+    <div class="sub">Come, crece y rodea a tus rivales</div>
+    <button class="btn google" id="bGoogle">
+      <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+      Continuar con Google
+    </button>
+    <div id="gbox"></div>
+    <button class="btn apple" id="bApple">
+      <svg viewBox="0 0 24 24" fill="#fff"><path d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.28-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.38-3.69zM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28z"/></svg>
+      Continuar con Apple
+    </button>
+    <button class="btn claude" id="bClaude" style="display:none">Continuar con mi cuenta de Claude</button>
+    <button class="btn ghost" id="bGuest">Jugar como invitado</button>
+    <div class="note">Tu progreso (monedas, skins) se guarda en tu cuenta.<br>Como invitado se guarda solo en este navegador.</div>
+  </div>
+</div>
+
+<!-- MENU -->
+<div class="screen" id="s-menu">
+  <div class="card">
+    <div class="topbar">
+      <div class="acct">👤 <b id="mAcct">Invitado</b> <button class="link" id="bLogout">cerrar sesión</button></div>
+      <div class="coins"><i class="coin-ic"></i><span id="mCoins">0</span></div>
+    </div>
+    <div class="logo"><span>slither</span>.ionline</div>
+    <div class="sub" id="mBest">Mejor puntuación: 0</div>
+    <input class="field" id="mName" maxlength="16" placeholder="Tu apodo">
+    <button class="btn primary" id="bPlay">▶ Jugar (con bots)</button>
+    <button class="btn violet" id="bOnline">🌐 Jugar online</button>
+    <div class="row">
+      <button class="btn ghost" id="bCustom">🎨 Personalizar</button>
+      <button class="btn ghost" id="bShop">🛒 Tienda</button>
+    </div>
+    <div class="note">Ratón para girar · clic o espacio para turbo<br>Móvil: arrastra para girar · botón TURBO</div>
+  </div>
+</div>
+
+<!-- CUSTOMIZE -->
+<div class="screen" id="s-custom">
+  <div class="card wide">
+    <div class="topbar">
+      <h2>🎨 Personalizar</h2>
+      <div class="row" style="gap:8px;align-items:center">
+        <div class="coins"><i class="coin-ic"></i><span class="cCoins">0</span></div>
+        <button class="btn ghost" style="margin:0;width:auto;padding:8px 14px" data-back>← Volver</button>
+      </div>
+    </div>
+    <div class="custom-wrap">
+      <div>
+        <canvas id="prev"></canvas>
+        <h3>Apodo</h3>
+        <input class="field" id="cName" maxlength="16" placeholder="Tu apodo">
+        <div class="note">Los objetos bloqueados se compran en la tienda.</div>
+        <button class="btn ghost" id="cToShop">🛒 Ir a la tienda</button>
+      </div>
+      <div class="scroll">
+        <h3>Skin</h3><div class="grid" id="cSkins"></div>
+        <h3>Accesorio</h3><div class="grid" id="cHats"></div>
+        <h3>Ojos</h3><div class="grid" id="cEyes"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div class="screen" id="s-shop">
+  <div class="card wide">
+    <div class="topbar">
+      <h2>🛒 Tienda</h2>
+      <div class="row" style="gap:8px;align-items:center">
+        <div class="coins"><i class="coin-ic"></i><span class="cCoins">0</span></div>
+        <button class="btn ghost" style="margin:0;width:auto;padding:8px 14px" data-back>← Volver</button>
+      </div>
+    </div>
+    <button class="btn primary" id="bDaily" style="margin-bottom:12px">🎁 Recompensa diaria: +75 monedas</button>
+    <div class="tabs">
+      <button class="tab on" data-tab="skins">Skins</button>
+      <button class="tab" data-tab="hats">Accesorios</button>
+      <button class="tab" data-tab="eyes">Ojos</button>
+    </div>
+    <div class="scroll"><div class="grid" id="shopGrid" style="margin-top:10px"></div></div>
+    <div class="note">Gana monedas jugando: 1 moneda por cada 10 de longitud y 10 por cada serpiente que elimines.</div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="screen" id="s-over">
+  <div class="card" style="text-align:center">
+    <div class="sub" style="margin:0 0 6px">Has muerto</div>
+    <div class="big" id="oScore">0</div>
+    <div class="sub" id="oInfo"></div>
+    <div class="coins" style="margin:0 auto"><i class="coin-ic"></i>+<span id="oCoins">0</span></div>
+    <button class="btn primary" id="bAgain">Jugar otra vez</button>
+    <button class="btn ghost" id="bMenu">Menú</button>
+  </div>
+</div>
+
+<!-- Modal: sign-in setup -->
+<div class="modal" id="mdl">
+  <div class="card">
+    <h2 id="mdlT">Falta configurar</h2>
+    <div class="note" id="mdlB" style="text-align:left;font-size:13px"></div>
+    <button class="btn ghost" id="mdlX">Entendido</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =====================================================================
+   CONFIGURACIÓN DE INICIO DE SESIÓN
+   Para que Google y Apple funcionen de verdad, rellena estos valores:
+   - GOOGLE_CLIENT_ID: crea un "OAuth client ID" (tipo Web) en Google Cloud
+     Console y añade el dominio donde alojes esta página a "Authorized
+     JavaScript origins".
+   - APPLE_CLIENT_ID / APPLE_REDIRECT_URI: crea un "Services ID" con
+     "Sign in with Apple" en Apple Developer y registra tu dominio y URL.
+   ===================================================================== */
+const CONFIG = {
+  GOOGLE_CLIENT_ID: "",
+  APPLE_CLIENT_ID: "",
+  APPLE_REDIRECT_URI: ""
+};
+
+/* ---------------- utilidades ---------------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const rid = () => Math.random().toString(36).slice(2, 10);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+const now = () => performance.now() / 1000;
+function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), ms); }
+function modal(title, html) { $('#mdlT').textContent = title; $('#mdlB').innerHTML = html; $('#mdl').classList.add('on'); }
+$('#mdlX').onclick = () => $('#mdl').classList.remove('on');
+const LS = {
+  mem: {},
+  get(k) { try { const v = localStorage.getItem(k); return v == null ? this.mem[k] ?? null : v; } catch (e) { return this.mem[k] ?? null; } },
+  set(k, v) { this.mem[k] = v; try { localStorage.setItem(k, v); } catch (e) { } },
+  del(k) { delete this.mem[k]; try { localStorage.removeItem(k); } catch (e) { } }
+};
+const shadeCache = {};
+function shade(hex, amt) {
+  const k = hex + amt; if (shadeCache[k]) return shadeCache[k];
+  let c = hex.replace('#', ''); if (c.length === 3) c = c.split('').map(x => x + x).join('');
+  let r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+  const f = v => clamp(Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt), 0, 255);
+  return shadeCache[k] = `rgb(${f(r)},${f(g)},${f(b)})`;
+}
+function getClaude(name, ms = 10000) {
+  if (!window.claude || typeof window.claude.use !== 'function') return Promise.resolve(null);
+  return Promise.race([window.claude.use(name).catch(() => null), new Promise(r => setTimeout(() => r(null), ms))]);
+}
+
+/* ---------------- catálogo ---------------- */
+const SKINS = [
+  { id: 'menta', name: 'Menta', price: 0, colors: ['#3ee6a8', '#22c08a'] },
+  { id: 'fuego', name: 'Fuego', price: 0, colors: ['#ff5a36', '#ffb020'] },
+  { id: 'oceano', name: 'Océano', price: 150, colors: ['#1e90ff', '#00d1ff', '#7fe8ff'] },
+  { id: 'uva', name: 'Uva', price: 150, colors: ['#9b5cff', '#c78bff'] },
+  { id: 'coral', name: 'Coral', price: 200, colors: ['#ff6f91', '#ffc2d1'] },
+  { id: 'abeja', name: 'Abeja', price: 300, colors: ['#ffd21f', '#ffd21f', '#262626', '#262626'] },
+  { id: 'toxico', name: 'Tóxico', price: 400, colors: ['#a6ff00', '#1c2a00'] },
+  { id: 'hielo', name: 'Hielo', price: 400, colors: ['#e8fbff', '#9fe7ff', '#5cc8ff'] },
+  { id: 'arcoiris', name: 'Arcoíris', price: 650, colors: ['#ff4d4d', '#ff9f1a', '#ffe14d', '#4dff88', '#4dd2ff', '#9a6bff'] },
+  { id: 'lava', name: 'Lava', price: 750, colors: ['#3a0e00', '#ff3d00', '#ff9100', '#ff3d00'] },
+  { id: 'galaxia', name: 'Galaxia', price: 1000, colors: ['#1b0b3a', '#4b1fa6', '#c04bff', '#4b1fa6'] },
+  { id: 'oro', name: 'Oro', price: 1500, colors: ['#ffd700', '#ffb300', '#fff1a8', '#ffb300'] },
+];
+const HATS = [
+  { id: 'none', name: 'Nada', price: 0 }, { id: 'pajarita', name: 'Pajarita', price: 120 },
+  { id: 'gorra', name: 'Gorra', price: 150 }, { id: 'gafas', name: 'Gafas de sol', price: 220 },
+  { id: 'cuernos', name: 'Cuernos', price: 300 }, { id: 'halo', name: 'Halo', price: 500 },
+  { id: 'corona', name: 'Corona', price: 900 },
+];
+const EYES = [
+  { id: 'normal', name: 'Normales', price: 0 }, { id: 'enfadado', name: 'Enfadados', price: 80 },
+  { id: 'tierno', name: 'Tiernos', price: 80 }, { id: 'ciclope', name: 'Cíclope', price: 250 },
+];
+const CAT = { skins: SKINS, hats: HATS, eyes: EYES };
+const skinById = id => SKINS.find(s => s.id === id) || SKINS[0];
+
+/* ---------------- cuenta y perfil ---------------- */
+const DEFAULT_PROFILE = () => ({ coins: 100, owned: { skins: ['menta', 'fuego'], hats: ['none'], eyes: ['normal'] },
+  skin: 'menta', hat: 'none', eyes: 'normal', name: '', best: 0, games: 0, kills: 0, lastDaily: '' });
+let account = null, profile = DEFAULT_PROFILE();
+const Cl = { user: null, db: null, room: null };
+
+async function loadProfile() {
+  let p = null;
+  if (account.provider === 'claude' && Cl.db) {
+    try {
+      const r = await Cl.db.collection('data/users/' + account.id).doc('profile').get();
+      const d = r && (typeof r.data === 'function' ? r.data() : (r.data !== undefined ? r.data : r));
+      if (d && typeof d.coins === 'number') p = d;
+    } catch (e) { }
+  }
+  if (!p) { try { p = JSON.parse(LS.get('serp_profile_' + account.provider + '_' + account.id) || 'null'); } catch (e) { } }
+  const base = DEFAULT_PROFILE();
+  profile = Object.assign(base, p || {});
+  profile.owned = Object.assign(base.owned, (p && p.owned) || {});
+  if (!profile.name) profile.name = account.name || '';
+}
+let saveT = 0;
+function saveProfile() {
+  clearTimeout(saveT);
+  saveT = setTimeout(async () => {
+    const json = JSON.stringify(profile);
+    LS.set('serp_profile_' + account.provider + '_' + account.id, json);
+    if (account.provider === 'claude' && Cl.db) {
+      try { await Cl.db.collection('data/users/' + account.id).doc('profile').set(JSON.parse(json)); } catch (e) { }
+    }
+  }, 300);
+}
+async function finishLogin(acc) {
+  account = acc; LS.set('serp_account', JSON.stringify(acc));
+  await loadProfile(); saveProfile();
+  toast('¡Hola, ' + (acc.name || 'jugador') + '!');
+  show('menu');
+}
+function decodeJwt(t) {
+  try { const b = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(decodeURIComponent(atob(b).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''))); }
+  catch (e) { return {}; }
+}
+function loadScript(src) {
+  return new Promise((res, rej) => { if ([...document.scripts].some(s => s.src === src)) return res();
+    const s = document.createElement('script'); s.src = src; s.async = true; s.onload = res; s.onerror = () => rej(new Error('load')); document.head.appendChild(s); });
+}
+async function signInGoogle() {
+  if (!CONFIG.GOOGLE_CLIENT_ID) return modal('Google no está configurado',
+    'Para activar el inicio de sesión con Google, crea un <b>OAuth Client ID</b> de tipo Web en Google Cloud Console, añade el dominio donde alojes el juego en <i>Authorized JavaScript origins</i> y pega el ID en <code>CONFIG.GOOGLE_CLIENT_ID</code> al principio del código.<br><br>Mientras tanto puedes jugar como invitado.');
+  try { await loadScript('https://accounts.google.com/gsi/client'); } catch (e) { return toast('No se pudo cargar Google desde esta página.'); }
+  google.accounts.id.initialize({ client_id: CONFIG.GOOGLE_CLIENT_ID, callback: r => {
+    const p = decodeJwt(r.credential); // en producción, verifica el token en tu servidor
+    finishLogin({ provider: 'google', id: p.sub, name: p.given_name || p.name || 'Jugador', email: p.email || '' });
+  } });
+  const box = $('#gbox'); box.innerHTML = '';
+  google.accounts.id.renderButton(box, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with' });
+  google.accounts.id.prompt();
+}
+async function signInApple() {
+  if (!CONFIG.APPLE_CLIENT_ID || !CONFIG.APPLE_REDIRECT_URI) return modal('Apple no está configurado',
+    'Para activar "Iniciar sesión con Apple" necesitas una cuenta de Apple Developer: crea un <b>Services ID</b> con Sign in with Apple, registra tu dominio y URL de retorno, y pega los valores en <code>CONFIG.APPLE_CLIENT_ID</code> y <code>CONFIG.APPLE_REDIRECT_URI</code>.<br><br>Mientras tanto puedes jugar como invitado.');
+  try { await loadScript('https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/es_ES/appleid.auth.js'); } catch (e) { return toast('No se pudo cargar Apple desde esta página.'); }
+  try {
+    AppleID.auth.init({ clientId: CONFIG.APPLE_CLIENT_ID, scope: 'name email', redirectURI: CONFIG.APPLE_REDIRECT_URI, usePopup: true });
+    const r = await AppleID.auth.signIn();
+    const p = decodeJwt(r.authorization.id_token); // en producción, verifica el token en tu servidor
+    const nm = (r.user && r.user.name && r.user.name.firstName) || (p.email || '').split('@')[0] || 'Jugador';
+    finishLogin({ provider: 'apple', id: p.sub, name: nm, email: p.email || '' });
+  } catch (e) { toast('Inicio de sesión con Apple cancelado.'); }
+}
+async function signInClaude() {
+  if (!Cl.user) return toast('Cuenta no disponible aquí.');
+  const id = await Cl.user.id(); const me = await Cl.user.me();
+  finishLogin({ provider: 'claude', id: id || 'me', name: (me && me.name) || 'Jugador' });
+}
+function signInGuest() {
+  let gid = LS.get('serp_guest_id'); if (!gid) { gid = rid(); LS.set('serp_guest_id', gid); }
+  finishLogin({ provider: 'guest', id: gid, name: '' });
+}
+$('#bGoogle').onclick = signInGoogle; $('#bApple').onclick = signInApple;
+$('#bClaude').onclick = signInClaude; $('#bGuest').onclick = signInGuest;
+$('#bLogout').onclick = () => { LS.del('serp_account'); account = null; show('login'); };
+
+/* ---------------- pantallas ---------------- */
+let screen = 'login', prevScreen = 'menu';
+function show(name) {
+  if (name !== 'custom' && name !== 'shop' && screen !== 'custom' && screen !== 'shop') prevScreen = 'menu';
+  screen = name;
+  $$('.screen').forEach(s => s.classList.remove('on'));
+  const el = $('#s-' + name); if (el) el.classList.add('on');
+  $('#hud').classList.toggle('on', name === 'game');
+  if (name === 'menu') renderMenu();
+  if (name === 'custom') renderCustom();
+  if (name === 'shop') renderShop();
+  $$('.cCoins').forEach(e => e.textContent = profile.coins);
+}
+function renderMenu() {
+  const prov = { google: 'Google', apple: 'Apple', claude: 'Claude', guest: 'Invitado' }[account.provider];
+  $('#mAcct').textContent = account.provider === 'guest' ? 'Invitado' : (account.name || 'Jugador') + ' · ' + prov;
+  $('#mCoins').textContent = profile.coins;
+  $('#mBest').textContent = 'Mejor puntuación: ' + profile.best + ' · Partidas: ' + profile.games;
+  $('#mName').value = profile.name || '';
+}
+$('#mName').oninput = e => { profile.name = e.target.value.slice(0, 16); saveProfile(); };
+$('#cName').oninput = e => { profile.name = e.target.value.slice(0, 16); saveProfile(); };
+$('#bCustom').onclick = () => show('custom');
+$('#bShop').onclick = () => show('shop');
+$('#cToShop').onclick = () => show('shop');
+$$('[data-back]').forEach(b => b.onclick = () => show('menu'));
+$('#bPlay').onclick = () => startGame('offline');
+$('#bOnline').onclick = () => startGame('online');
+$('#bAgain').onclick = () => startGame(lastMode);
+$('#bMenu').onclick = () => { leaveGame(); show('menu'); };
+$('#exitbtn').onclick = () => { leaveGame(); show('menu'); };
+
+/* -------- tarjetas de objetos (customizar y tienda) -------- */
+function itemPreviewSnake(kind, it) {
+  return { skin: kind === 'skins' ? it.id : profile.skin, hat: kind === 'hats' ? it.id : 'none', eyes: kind === 'eyes' ? it.id : (kind === 'hats' ? profile.eyes : 'normal') };
+}
+const slotKey = { skins: 'skin', hats: 'hat', eyes: 'eyes' };
+function makeCard(kind, it, mode) {
+  const owned = profile.owned[kind].includes(it.id);
+  const equipped = profile[slotKey[kind]] === it.id;
+  const d = document.createElement('div');
+  d.className = 'item' + (equipped ? ' sel' : '') + (mode === 'custom' && !owned ? ' locked' : '');
+  const cv = document.createElement('canvas'); cv.width = 260; cv.height = 120; d.appendChild(cv);
+  drawStaticPreview(cv, itemPreviewSnake(kind, it), kind === 'skins' ? 1 : 1.6);
+  d.insertAdjacentHTML('beforeend', `<div class="nm">${it.name}</div>`);
+  const b = document.createElement('button'); b.className = 'mini';
+  if (owned) {
+    if (equipped) { b.classList.add('on'); b.textContent = 'Equipado'; }
+    else { b.classList.add('eq'); b.textContent = 'Equipar'; b.onclick = () => { profile[slotKey[kind]] = it.id; saveProfile(); show(screen); }; }
+  } else if (mode === 'custom') {
+    b.classList.add('on'); b.innerHTML = `🔒 ${it.price}`; b.style.cursor = 'pointer'; b.onclick = () => { shopTab = kind; show('shop'); };
+  } else {
+    b.classList.add('buy'); b.innerHTML = `Comprar · ${it.price}`;
+    if (profile.coins < it.price) b.disabled = true;
+    b.onclick = () => {
+      if (profile.coins < it.price) return toast('No tienes monedas suficientes.');
+      profile.coins -= it.price; profile.owned[kind].push(it.id); profile[slotKey[kind]] = it.id;
+      saveProfile(); toast('¡' + it.name + ' desbloqueado y equipado!'); show('shop');
+    };
+  }
+  d.appendChild(b);
+  return d;
+}
+function renderCustom() {
+  $('#cName').value = profile.name || '';
+  for (const [kind, el] of [['skins', '#cSkins'], ['hats', '#cHats'], ['eyes', '#cEyes']]) {
+    const g = $(el); g.innerHTML = '';
+    CAT[kind].forEach(it => g.appendChild(makeCard(kind, it, 'custom')));
+  }
+}
+let shopTab = 'skins';
+$$('.tab').forEach(t => t.onclick = () => { shopTab = t.dataset.tab; renderShop(); });
+function renderShop() {
+  $$('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === shopTab));
+  const g = $('#shopGrid'); g.innerHTML = '';
+  CAT[shopTab].filter(it => it.price > 0).forEach(it => g.appendChild(makeCard(shopTab, it, 'shop')));
+  const today = new Date().toISOString().slice(0, 10);
+  const bd = $('#bDaily'); const got = profile.lastDaily === today;
+  bd.disabled = got; bd.style.opacity = got ? .5 : 1;
+  bd.textContent = got ? '🎁 Recompensa diaria recogida · vuelve mañana' : '🎁 Recompensa diaria: +75 monedas';
+}
+$('#bDaily').onclick = () => {
+  const today = new Date().toISOString().slice(0, 10);
+  if (profile.lastDaily === today) return;
+  profile.lastDaily = today; profile.coins += 75; saveProfile(); toast('+75 monedas'); show('shop');
+};
+
+/* ---------------- dibujo de serpientes ---------------- */
+function circle(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill(); }
+const widthOf = sc => 9 + Math.min(Math.sqrt(sc) * 0.9, 30);
+const segCount = sc => Math.min(650, Math.floor(16 + sc * 0.5));
+
+function drawSnake(c, s, t, view, wOverride) {
+  const pts = s.pts, n = pts.length; if (!n) return;
+  const w = wOverride || widthOf(s.score);
+  const cols = skinById(s.skin).colors;
+  const boosting = s.boost && s.score > 12;
+  const inView = p => !view || (p.x > view.x0 - w && p.x < view.x1 + w && p.y > view.y0 - w && p.y < view.y1 + w);
+  if (boosting) {
+    c.globalAlpha = 0.22 + Math.sin(t * 18) * 0.08; c.fillStyle = cols[0];
+    for (let i = n - 1; i >= 0; i -= 2) { const p = pts[i]; if (inView(p)) circle(c, p.x, p.y, w * 0.5 + 7); }
+    c.globalAlpha = 1;
+  }
+  const tStart = n * 0.7;
+  for (let i = n - 1; i >= 0; i--) {
+    const p = pts[i]; if (!inView(p)) continue;
+    const taper = i > tStart ? 1 - ((i - tStart) / (n - tStart)) * 0.5 : 1;
+    const r = w * 0.5 * taper, col = cols[Math.floor(i / 4) % cols.length];
+    c.fillStyle = shade(col, -0.35); circle(c, p.x, p.y, r);
+    c.fillStyle = col; circle(c, p.x - r * 0.1, p.y - r * 0.1, r * 0.8);
+  }
+  // cabeza
+  const h = pts[0];
+  c.save(); c.translate(h.x, h.y); c.rotate(s.ang + Math.PI / 2);
+  drawEyes(c, s.eyes, w, s.look != null ? s.look - s.ang : 0);
+  drawHat(c, s.hat, w, t);
+  c.restore();
+}
+function drawEyes(c, type, w, look) {
+  const lx = Math.sin(look) * w * 0.06, ly = -Math.cos(look) * w * 0.06;
+  if (type === 'ciclope') {
+    c.fillStyle = '#fff'; circle(c, 0, -w * 0.15, w * 0.3);
+    c.fillStyle = '#111'; circle(c, lx * 1.5, -w * 0.15 + ly * 1.5, w * 0.15);
+    c.fillStyle = '#fff'; circle(c, lx * 1.5 + w * 0.05, -w * 0.2 + ly, w * 0.04);
+    return;
+  }
+  for (const sx of [-1, 1]) {
+    const ex = sx * w * 0.27, ey = -w * 0.18;
+    c.fillStyle = '#fff'; circle(c, ex, ey, w * 0.21);
+    if (type === 'tierno') {
+      c.fillStyle = '#1a1030'; circle(c, ex + lx, ey + ly, w * 0.16);
+      c.fillStyle = '#fff'; circle(c, ex + lx + w * 0.05, ey + ly - w * 0.05, w * 0.05); circle(c, ex + lx - w * 0.04, ey + ly + w * 0.04, w * 0.025);
+    } else {
+      c.fillStyle = '#111'; circle(c, ex + lx, ey + ly, w * 0.11);
+    }
+    if (type === 'enfadado') {
+      c.strokeStyle = '#111'; c.lineWidth = Math.max(1.5, w * 0.07); c.lineCap = 'round';
+      c.beginPath(); c.moveTo(ex - sx * w * 0.2, ey - w * 0.3); c.lineTo(ex + sx * w * 0.18, ey - w * 0.15); c.stroke();
+    }
+  }
+}
+function drawHat(c, type, w, t) {
+  if (type === 'none' || !type) return;
+  const u = w;
+  if (type === 'corona') {
+    c.fillStyle = '#ffd23f'; c.strokeStyle = '#b8860b'; c.lineWidth = u * 0.05;
+    c.beginPath(); const y0 = u * 0.42, y1 = u * 0.08;
+    c.moveTo(-u * 0.42, y0); c.lineTo(-u * 0.42, y1); c.lineTo(-u * 0.24, y1 + u * 0.14); c.lineTo(-u * 0.1, y1 - u * 0.06);
+    c.lineTo(0, y1 + u * 0.12); c.lineTo(u * 0.1, y1 - u * 0.06); c.lineTo(u * 0.24, y1 + u * 0.14); c.lineTo(u * 0.42, y1); c.lineTo(u * 0.42, y0); c.closePath();
+    c.fill(); c.stroke();
+    c.fillStyle = '#ff3b6b'; circle(c, 0, u * 0.3, u * 0.06); c.fillStyle = '#3bc6ff'; circle(c, -u * 0.25, u * 0.3, u * 0.05); circle(c, u * 0.25, u * 0.3, u * 0.05);
+  } else if (type === 'gorra') {
+    c.fillStyle = '#e23b4e'; c.beginPath(); c.ellipse(0, u * 0.3, u * 0.42, u * 0.3, 0, 0, 6.28); c.fill();
+    c.fillStyle = '#b02233'; c.beginPath(); c.ellipse(0, u * 0.58, u * 0.32, u * 0.16, 0, 0, 6.28); c.fill();
+    c.fillStyle = '#fff'; circle(c, 0, u * 0.22, u * 0.06);
+  } else if (type === 'cuernos') {
+    c.fillStyle = '#f2e6c9'; c.strokeStyle = '#8a7a55'; c.lineWidth = u * 0.04;
+    for (const sx of [-1, 1]) {
+      c.beginPath(); c.moveTo(sx * u * 0.3, u * 0.05); c.quadraticCurveTo(sx * u * 0.75, u * 0.05, sx * u * 0.62, -u * 0.45);
+      c.quadraticCurveTo(sx * u * 0.55, -u * 0.05, sx * u * 0.18, u * 0.2); c.closePath(); c.fill(); c.stroke();
+    }
+  } else if (type === 'halo') {
+    c.strokeStyle = 'rgba(255,230,120,' + (0.75 + Math.sin(t * 4) * 0.2) + ')'; c.lineWidth = u * 0.09;
+    c.beginPath(); c.ellipse(0, u * 0.1, u * 0.55, u * 0.55, 0, 0, 6.28); c.stroke();
+  } else if (type === 'gafas') {
+    c.fillStyle = '#111';
+    for (const sx of [-1, 1]) { c.beginPath(); c.ellipse(sx * u * 0.27, -u * 0.18, u * 0.24, u * 0.19, 0, 0, 6.28); c.fill(); }
+    c.fillRect(-u * 0.1, -u * 0.22, u * 0.2, u * 0.06);
+    c.fillStyle = 'rgba(255,255,255,.35)'; for (const sx of [-1, 1]) circle(c, sx * u * 0.27 - u * 0.08, -u * 0.25, u * 0.05);
+  } else if (type === 'pajarita') {
+    c.fillStyle = '#c51d4a'; const y = u * 0.55;
+    c.beginPath(); c.moveTo(0, y); c.lineTo(-u * 0.4, y - u * 0.2); c.lineTo(-u * 0.4, y + u * 0.2); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(0, y); c.lineTo(u * 0.4, y - u * 0.2); c.lineTo(u * 0.4, y + u * 0.2); c.closePath(); c.fill();
+    c.fillStyle = '#8d0f30'; circle(c, 0, y, u * 0.1);
+  }
+}
+function previewPts(cvW, cvH, n, sp, t, amp) {
+  const pts = [];
+  for (let i = 0; i < n; i++) { const x = cvW * 0.82 - i * sp; pts.push({ x, y: cvH / 2 + Math.sin(i * 0.25 - t * 4) * amp }); }
+  return pts;
+}
+function drawStaticPreview(cv, look, zoom) {
+  const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
+  const w = 34 * zoom, n = zoom > 1 ? 12 : 26, sp = w * 0.42;
+  const pts = previewPts(cv.width, cv.height, n, sp, 0.6, 12);
+  if (zoom > 1) pts.forEach(p => p.x += cv.width * 0.08);
+  const s = { ...look, pts, score: 50, ang: Math.atan2(pts[0].y - pts[1].y, pts[0].x - pts[1].x) };
+  drawSnake(c, s, 0, null, w);
+}
+// vista previa animada en personalización
+(function animPrev() {
+  requestAnimationFrame(animPrev);
+  if (screen !== 'custom') return;
+  const cv = $('#prev'), r = cv.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
+  if (cv.width !== Math.round(r.width * d)) { cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
+  const c = cv.getContext('2d'); c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, r.width, r.height);
+  const t = now(), w = 30, pts = previewPts(r.width, r.height, 40, w * 0.45, t, 22);
+  const s = { skin: profile.skin, hat: profile.hat, eyes: profile.eyes, pts, score: 80, ang: Math.atan2(pts[0].y - pts[1].y, pts[0].x - pts[1].x) };
+  drawSnake(c, s, t, null, w);
+  c.fillStyle = '#fff'; c.font = 'bold 16px "Trebuchet MS", system-ui, sans-serif'; c.textAlign = 'center';
+  c.fillText(profile.name || 'Sin nombre', r.width / 2, 26);
+})();
+
+/* ---------------- motor de juego ---------------- */
+const cv = $('#c'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; }
+addEventListener('resize', resize); resize();
+
+const WORLD_R = 3000, SP = 7, FOOD_N = 1000, FOOD_MAX = 2600;
+const FOOD_COLORS = ['#ff4d6d', '#ffd23f', '#3ee6a8', '#4dd2ff', '#b06bff', '#ff8f3f', '#ff6fd8', '#a6ff4d'];
+const BOT_NAMES = ['Culebrilla', 'Pitón', 'Zigzag', 'Mamba', 'Nagini', 'Fideo', 'Spaghetti', 'Anaconda', 'Kaa', 'Cascabel', 'Víbora', 'Churro',
+  'Gusanito', 'Lombriz', 'Boa', 'Cobra', 'Slinky', 'Tallarín', 'Serpentina', 'Regaliz', 'Manguera', 'Chorizo'];
+let G = null, lastMode = 'offline';
+
+function randPos(maxR) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * maxR; return { x: Math.cos(a) * r, y: Math.sin(a) * r }; }
+function newFood(x, y, v, col) {
+  if (x === undefined) { const p = randPos(WORLD_R - 40); x = p.x; y = p.y; }
+  v = v || 1 + Math.floor(Math.random() * 3);
+  return { x, y, v, r: 3 + v * 1.6, c: col || FOOD_COLORS[(Math.random() * FOOD_COLORS.length) | 0], ph: Math.random() * 6 };
+}
+function newSnake(o) {
+  const s = { id: o.id || rid(), name: o.name || 'Serpiente', skin: o.skin || 'menta', hat: o.hat || 'none', eyes: o.eyes || 'normal',
+    isBot: !!o.isBot, remote: !!o.remote, score: o.score || 10, ang: Math.random() * 6.283, pts: [], alive: true, boost: false, dropT: 0,
+    ai: { t: 0, hunter: Math.random() < 0.35, wander: Math.random() * 6.28 }, kills: 0 };
+  s.target = s.ang;
+  if (!o.remote) {
+    const p = o.pos || randPos(WORLD_R * 0.75);
+    const n = segCount(s.score);
+    for (let i = 0; i < n; i++) s.pts.push({ x: p.x - Math.cos(s.ang) * i * SP, y: p.y - Math.sin(s.ang) * i * SP });
+  }
+  return s;
+}
+function randomBot(id) {
+  const sk = SKINS[(Math.random() * SKINS.length) | 0].id;
+  const hat = Math.random() < 0.3 ? HATS[1 + ((Math.random() * (HATS.length - 1)) | 0)].id : 'none';
+  const eyes = EYES[(Math.random() * EYES.length) | 0].id;
+  const nm = BOT_NAMES[(Math.random() * BOT_NAMES.length) | 0];
+  return newSnake({ id, name: nm, skin: sk, hat, eyes, isBot: true, score: 10 + Math.floor(Math.random() * Math.random() * 400) });
+}
+function makeWorld(mode, demo) {
+  const g = { mode, demo, food: [], bots: [], player: null, cam: { x: 0, y: 0, z: 1 }, t: 0, respawn: [], botN: 0, kills: 0, over: false };
+  for (let i = 0; i < FOOD_N; i++) g.food.push(newFood());
+  if (mode === 'offline') for (let i = 0; i < 16; i++) g.bots.push(randomBot('b' + (g.botN++)));
+  return g;
+}
+function startGame(mode) {
+  lastMode = mode;
+  if (mode === 'online' && !Net.ok) {
+    toast(Net.trying ? 'Conectando al servidor online…' : 'El modo online no está disponible en esta vista.');
+    if (!Net.trying) netConnect();
+    return;
+  }
+  G = makeWorld(mode, false);
+  G.player = newSnake({ id: 'p', name: profile.name || 'Sin nombre', skin: profile.skin, hat: profile.hat, eyes: profile.eyes, pos: randPos(WORLD_R * 0.6) });
+  G.cam.x = G.player.pts[0].x; G.cam.y = G.player.pts[0].y;
+  G.startT = now();
+  $('#netst').style.display = mode === 'online' ? 'block' : 'none';
+  show('game');
+}
+function leaveGame() {
+  G = makeWorld('offline', true);
+}
+function gameOver() {
+  const p = G.player, sc = Math.floor(p.score);
+  const coins = Math.floor(sc / 10) + G.kills * 10;
+  profile.coins += coins; profile.games += 1; profile.kills += G.kills;
+  const rec = sc > profile.best; if (rec) profile.best = sc;
+  saveProfile();
+  $('#oScore').textContent = sc;
+  $('#oInfo').textContent = (rec ? '¡Nuevo récord! · ' : '') + 'Eliminaciones: ' + G.kills + ' · Tiempo: ' + Math.floor(now() - G.startT) + ' s';
+  $('#oCoins').textContent = coins;
+  G.over = true;
+  setTimeout(() => { if (G && G.over) show('over'); }, 900);
+}
+
+function updSnake(s, dt) {
+  if (!s.alive) return;
+  const w = widthOf(s.score);
+  const tr = (4.4 - Math.min(w / 18, 2.2)) * dt;
+  s.ang += clamp(angDiff(s.target, s.ang), -tr, tr);
+  const boosting = s.boost && s.score > 12;
+  const sp = boosting ? 340 : 170;
+  const h = s.pts[0];
+  h.x += Math.cos(s.ang) * sp * dt; h.y += Math.sin(s.ang) * sp * dt;
+  for (let i = 1; i < s.pts.length; i++) {
+    const a = s.pts[i - 1], b = s.pts[i], dx = b.x - a.x, dy = b.y - a.y, dl = Math.hypot(dx, dy) || 1;
+    if (dl > SP) { const k = SP / dl; b.x = a.x + dx * k; b.y = a.y + dy * k; }
+  }
+  const n = segCount(s.score);
+  while (s.pts.length < n) { const l = s.pts[s.pts.length - 1]; s.pts.push({ x: l.x, y: l.y }); }
+  while (s.pts.length > n) s.pts.pop();
+  if (boosting) {
+    s.score -= 7 * dt; s.dropT += dt;
+    if (s.dropT > 0.12) { s.dropT = 0; const tl = s.pts[s.pts.length - 1];
+      if (G.food.length < FOOD_MAX) G.food.push(newFood(tl.x + (Math.random() - .5) * 8, tl.y + (Math.random() - .5) * 8, 1, skinById(s.skin).colors[0])); }
+  }
+  // comer
+  const fr = w * 0.5 + 10, mag = w * 0.5 + 55;
+  for (let i = G.food.length - 1; i >= 0; i--) {
+    const f = G.food[i], dx = f.x - h.x, dy = f.y - h.y; if (dx > mag || dx < -mag || dy > mag || dy < -mag) continue;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < fr * fr) { s.score += f.v; G.food[i] = G.food[G.food.length - 1]; G.food.pop(); }
+    else if (d2 < mag * mag) { f.x -= dx * 0.12; f.y -= dy * 0.12; }
+  }
+  if (h.x * h.x + h.y * h.y > WORLD_R * WORLD_R) killSnake(s, null);
+}
+function bbox(s) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const p of s.pts) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+  s.bb = { x0, y0, x1, y1 };
+}
+function hitsBody(x, y, rad, self, all, selfSkip) {
+  for (const o of all) {
+    if (!o.alive || !o.pts.length) continue;
+    const ow = widthOf(o.score) * 0.5 + rad;
+    if (!o.bb || x < o.bb.x0 - ow || x > o.bb.x1 + ow || y < o.bb.y0 - ow || y > o.bb.y1 + ow) continue;
+    const start = o === self ? (selfSkip || 1e9) : 0;
+    for (let i = start; i < o.pts.length; i += 2) { const p = o.pts[i], dx = p.x - x, dy = p.y - y; if (dx * dx + dy * dy < ow * ow) return o; }
+  }
+  return null;
+}
+function killSnake(s, killer) {
+  if (!s.alive) return;
+  s.alive = false;
+  const val = Math.max(1, Math.min(10, (s.score * 0.8) / (s.pts.length / 2)));
+  const col = skinById(s.skin).colors;
+  for (let i = 0; i < s.pts.length; i += 2) {
+    if (G.food.length >= FOOD_MAX) break;
+    const p = s.pts[i]; G.food.push(newFood(p.x + (Math.random() - .5) * 14, p.y + (Math.random() - .5) * 14, val, col[(i >> 2) % col.length]));
+  }
+  if (killer === G.player && s !== G.player) { G.kills++; toast('Has eliminado a ' + s.name + ' 💥', 1600); }
+  if (G.mode === 'online' && !s.remote) netDead(s);
+  if (s === G.player) gameOver();
+  else if (s.isBot && !s.remote) G.respawn.push(G.t + 2 + Math.random() * 3);
+}
+function botThink(b, all, dt) {
+  b.ai.t -= dt; if (b.ai.t > 0) return; b.ai.t = 0.1 + Math.random() * 0.08;
+  const h = b.pts[0], w = widthOf(b.score);
+  const dc = Math.hypot(h.x, h.y);
+  if (dc > WORLD_R - 260) { b.target = Math.atan2(-h.y, -h.x) + (Math.random() - .5) * 0.4; b.boost = false; return; }
+  // objetivo: comida cercana valiosa
+  let best = null, bs = -1e9;
+  for (const f of G.food) {
+    const dx = f.x - h.x, dy = f.y - h.y; if (dx > 450 || dx < -450 || dy > 450 || dy < -450) continue;
+    const sc = f.v * 120 - Math.hypot(dx, dy) - Math.abs(angDiff(Math.atan2(dy, dx), b.ang)) * 60;
+    if (sc > bs) { bs = sc; best = f; }
+  }
+  let goal = best ? Math.atan2(best.y - h.y, best.x - h.x) : b.ai.wander;
+  if (!best) b.ai.wander += (Math.random() - .5) * 0.6;
+  b.boost = false;
+  // cazador: cortar el paso a serpientes más pequeñas
+  if (b.ai.hunter && b.score > 60) {
+    for (const o of all) {
+      if (o === b || !o.alive || !o.pts.length || o.score > b.score * 0.9) continue;
+      const oh = o.pts[0], dx = oh.x - h.x, dy = oh.y - h.y;
+      if (dx * dx + dy * dy < 320 * 320) {
+        const tx = oh.x + Math.cos(o.ang) * 120, ty = oh.y + Math.sin(o.ang) * 120;
+        goal = Math.atan2(ty - h.y, tx - h.x); b.boost = Math.random() < 0.6; break;
+      }
+    }
+  }
+  // esquivar
+  const look = 55 + w * 2.5;
+  const cands = [0, -0.35, 0.35, -0.8, 0.8, -1.3, 1.3, -2, 2, Math.PI];
+  let bestA = b.ang, bestS = -1e9;
+  for (const off of cands) {
+    const a = b.ang + off;
+    let sc = -Math.abs(angDiff(goal, a)) * 1.5 - Math.abs(off) * 0.3;
+    for (const [dist, pen] of [[look * 0.45, 300], [look, 120], [look * 1.6, 40]]) {
+      const px = h.x + Math.cos(a) * dist, py = h.y + Math.sin(a) * dist;
+      if (hitsBody(px, py, w * 0.6, b, all, 14) || px * px + py * py > (WORLD_R - 30) ** 2) { sc -= pen; break; }
+    }
+    if (sc > bestS) { bestS = sc; bestA = a; }
+  }
+  if (bestS < -100) b.boost = Math.random() < 0.5; // escapar
+  if (!b.boost && best && best.v > 4 && Math.random() < 0.15) b.boost = true;
+  b.target = bestA;
+}
+
+/* ---------------- entrada ---------------- */
+const input = { mx: 0, my: 0, down: false, key: false, touch: false, tb: false };
+addEventListener('mousemove', e => { input.mx = e.clientX; input.my = e.clientY; });
+cv.addEventListener('mousedown', () => input.down = true);
+addEventListener('mouseup', () => input.down = false);
+addEventListener('keydown', e => { if (e.code === 'Space' && screen === 'game') { input.key = true; e.preventDefault(); } });
+addEventListener('keyup', e => { if (e.code === 'Space') input.key = false; });
+cv.addEventListener('touchstart', e => { document.body.classList.add('touch'); input.touch = true; const t = e.touches[0]; input.mx = t.clientX; input.my = t.clientY; input.down = e.touches.length > 1; e.preventDefault(); }, { passive: false });
+cv.addEventListener('touchmove', e => { const t = e.touches[0]; input.mx = t.clientX; input.my = t.clientY; e.preventDefault(); }, { passive: false });
+cv.addEventListener('touchend', e => { input.down = e.touches.length > 1; });
+const bb = $('#boostbtn');
+bb.addEventListener('touchstart', e => { input.tb = true; e.preventDefault(); e.stopPropagation(); }, { passive: false });
+bb.addEventListener('touchend', e => { input.tb = false; e.preventDefault(); });
+if ('ontouchstart' in window) document.body.classList.add('touch');
+
+/* ---------------- online ---------------- */
+const Net = { ok: false, trying: false, arena: null, pid: rid(), seen: new Map(), remote: new Map(), host: false, sendT: 0, warned: false };
+function unwrap(m) { if (!m) return null; if (m.pid) return m; if (m.data && m.data.pid) return m.data; if (m.payload && m.payload.pid) return m.payload; return null; }
+async function netConnect() {
+  if (Net.ok || Net.trying) return;
+  Net.trying = true;
+  const room = Cl.room || await getClaude('room');
+  Net.trying = false;
+  if (!room) return;
+  Cl.room = room;
+  try {
+    let arena = room;
+    if (typeof room.join === 'function') arena = await room.join('serpentia-arena-1');
+    Net.arena = arena;
+    arena.on('st', m => netOnState(unwrap(m)));
+    arena.on('dead', m => netOnDead(unwrap(m)));
+    Net.ok = true;
+  } catch (e) { Net.ok = false; }
+}
+function ser(s) {
+  const p = []; for (let i = 0; i < s.pts.length; i += 2) p.push(Math.round(s.pts[i].x), Math.round(s.pts[i].y));
+  return { id: s.id, n: s.name, sk: s.skin, h: s.hat, e: s.eyes, s: Math.round(s.score), a: +s.ang.toFixed(2), bo: s.boost && s.score > 12 ? 1 : 0, bot: s.isBot ? 1 : 0, p };
+}
+function expand(p) {
+  const out = [];
+  for (let i = 0; i < p.length; i += 2) {
+    const x = p[i], y = p[i + 1]; out.push({ x, y });
+    if (i + 3 < p.length) out.push({ x: (x + p[i + 2]) / 2, y: (y + p[i + 3]) / 2 });
+  }
+  return out;
+}
+function upsertRemote(key, d, owner) {
+  if (!d || !Array.isArray(d.p) || d.p.length < 4) return;
+  let r = Net.remote.get(key);
+  if (!r) { r = newSnake({ id: key, remote: true }); r.alive = true; Net.remote.set(key, r); }
+  r.owner = owner; r.name = String(d.n || 'Serpiente').slice(0, 16); r.skin = d.sk; r.hat = d.h; r.eyes = d.e;
+  r.score = clamp(+d.s || 10, 1, 1e5); r.ang = +d.a || 0; r.boost = !!d.bo; r.isBot = !!d.bot; r.t = now();
+  const pts = expand(d.p);
+  if (r.pts.length === pts.length) r.tgt = pts; else { r.pts = pts; r.tgt = null; }
+}
+function netOnState(d) {
+  if (!d || d.pid === Net.pid) return;
+  Net.seen.set(d.pid, now());
+  if (d.pl) upsertRemote(d.pid + ':p', d.pl, d.pid);
+  const keep = new Set();
+  for (const b of (d.b || []).slice(0, 20)) { const k = d.pid + ':' + b.id; keep.add(k); upsertRemote(k, b, d.pid); }
+  for (const [k, r] of Net.remote) if (r.owner === d.pid && r.isBot && !keep.has(k)) Net.remote.delete(k);
+}
+function netOnDead(d) {
+  if (!d || d.pid === Net.pid) return;
+  const r = Net.remote.get(d.key);
+  if (r && G && G.mode === 'online') { r.alive = true; killSnake(Object.assign(r, { alive: true }), null); }
+  Net.remote.delete(d.key);
+}
+function netDead(s) {
+  if (!Net.arena) return;
+  const key = Net.pid + ':' + (s === G.player ? 'p' : s.id);
+  try { Promise.resolve(Net.arena.emit('dead', { pid: Net.pid, key })).catch(() => { }); } catch (e) { }
+}
+function netTick(dt) {
+  if (!Net.ok || !G || G.mode !== 'online' || G.demo) return;
+  const t = now();
+  for (const [pid, ts] of Net.seen) if (t - ts > 3) Net.seen.delete(pid);
+  for (const [k, r] of Net.remote) if (t - r.t > 2.5) Net.remote.delete(k);
+  // anfitrión = id más bajo; controla los bots compartidos
+  const host = [Net.pid, ...Net.seen.keys()].sort()[0] === Net.pid;
+  if (t - G.startT > 1.2) {
+    if (host && !Net.host) { G.bots = []; for (let i = 0; i < 8; i++) G.bots.push(randomBot('b' + (G.botN++))); }
+    if (!host && Net.host) G.bots = [];
+    Net.host = host;
+  }
+  const humans = 1 + [...Net.remote.values()].filter(r => !r.isBot).length;
+  const bots = [...Net.remote.values()].filter(r => r.isBot).length + G.bots.length;
+  $('#netst').innerHTML = `🌐 Online · ${humans} jugador${humans > 1 ? 'es' : ''} · ${bots} bots${Net.host ? ' · anfitrión' : ''}`;
+  Net.sendT -= dt; if (Net.sendT > 0) return; Net.sendT = 0.11;
+  const msg = { pid: Net.pid, pl: G.player.alive ? ser(G.player) : null, b: Net.host ? G.bots.filter(b => b.alive).map(ser) : [] };
+  try {
+    Promise.resolve(Net.arena.emit('st', msg)).catch(() => netWarn());
+  } catch (e) { netWarn(); }
+}
+function netWarn() { if (Net.warned) return; Net.warned = true; toast('Solo puedes mirar: tu acceso a esta página no permite enviar jugadas online.', 5000); }
+
+/* ---------------- fondo ---------------- */
+const hexTile = (() => {
+  const s = 28, h = Math.sqrt(3) * s, c = document.createElement('canvas'); c.width = Math.round(3 * s); c.height = Math.round(h);
+  const x = c.getContext('2d'); x.fillStyle = '#0e1424'; x.fillRect(0, 0, c.width, c.height);
+  const hex = (cx, cy) => { x.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; x.lineTo(cx + Math.cos(a) * s * 0.92, cy + Math.sin(a) * s * 0.92); } x.closePath();
+    x.fillStyle = '#131b31'; x.fill(); x.strokeStyle = '#0a0f1c'; x.lineWidth = 2; x.stroke(); };
+  for (const [cx, cy] of [[0, 0], [3 * s, 0], [0, h], [3 * s, h], [1.5 * s, h / 2]]) hex(cx, cy);
+  return c;
+})();
+const hexPat = ctx.createPattern(hexTile, 'repeat');
+
+/* ---------------- bucle principal ---------------- */
+G = makeWorld('offline', true);
+let last = now(), uiT = 0;
+function frame() {
+  requestAnimationFrame(frame);
+  const t = now(); let dt = Math.min(0.05, t - last); last = t;
+  if (!G) return;
+  G.t += dt;
+  const P = G.player;
+  // control jugador
+  if (P && P.alive) {
+    P.target = Math.atan2(input.my - H / 2, input.mx - W / 2);
+    P.look = P.target;
+    P.boost = input.down || input.key || input.tb;
+  }
+  const remote = G.mode === 'online' ? [...Net.remote.values()] : [];
+  const local = [...G.bots]; if (P) local.push(P);
+  const all = local.concat(remote);
+  for (const s of all) if (s.alive) bbox(s);
+  for (const b of G.bots) if (b.alive) botThink(b, all, dt);
+  for (const s of local) updSnake(s, dt);
+  for (const r of remote) if (r.tgt) for (let i = 0; i < r.pts.length; i++) { r.pts[i].x += (r.tgt[i].x - r.pts[i].x) * 0.35; r.pts[i].y += (r.tgt[i].y - r.pts[i].y) * 0.35; }
+  for (const s of all) if (s.alive) bbox(s);
+  // colisiones (solo las serpientes locales; cada cliente decide su muerte)
+  for (const s of local) {
+    if (!s.alive) continue;
+    const h = s.pts[0];
+    const o = hitsBody(h.x, h.y, widthOf(s.score) * 0.3, s, all.filter(x => x !== s));
+    if (o) killSnake(s, o);
+  }
+  G.bots = G.bots.filter(b => b.alive);
+  G.respawn = G.respawn.filter(rt => { if (G.t >= rt) { if (G.mode === 'offline' || Net.host) G.bots.push(randomBot('b' + (G.botN++))); return false; } return true; });
+  while (G.food.length < FOOD_N) G.food.push(newFood());
+  netTick(dt);
+
+  // cámara
+  let tx, ty, tz;
+  if (P) { const h = P.pts[0]; tx = h.x; ty = h.y; tz = clamp(1.15 - widthOf(P.score) / 70, 0.5, 1.05); }
+  else { const lead = G.bots.reduce((a, b) => (!a || b.score > a.score ? b : a), null); tx = lead ? lead.pts[0].x : 0; ty = lead ? lead.pts[0].y : 0; tz = 0.75; }
+  const cam = G.cam; const k = P ? 0.2 : 0.03;
+  cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; cam.z += (tz - cam.z) * 0.05;
+  const z = cam.z * Math.min(1, Math.max(W, H) / 1100) * 1.05;
+  render(all, z, t);
+  uiT -= dt; if (uiT <= 0 && screen === 'game') { uiT = 0.25; updateHUD(all); }
+}
+function render(all, z, t) {
+  const cam = G.cam;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#060810'; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(DPR * z, 0, 0, DPR * z, DPR * (W / 2 - cam.x * z), DPR * (H / 2 - cam.y * z));
+  const view = { x0: cam.x - W / 2 / z, y0: cam.y - H / 2 / z, x1: cam.x + W / 2 / z, y1: cam.y + H / 2 / z };
+  ctx.fillStyle = hexPat; ctx.fillRect(view.x0, view.y0, view.x1 - view.x0, view.y1 - view.y0);
+  // borde del mundo
+  ctx.beginPath(); ctx.rect(view.x0, view.y0, view.x1 - view.x0, view.y1 - view.y0); ctx.arc(0, 0, WORLD_R, 0, 6.2832, true);
+  ctx.fillStyle = 'rgba(90,0,20,0.55)'; ctx.fill('evenodd');
+  ctx.strokeStyle = '#ff3b5c'; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(0, 0, WORLD_R, 0, 6.2832); ctx.stroke();
+  // comida
+  for (const f of G.food) {
+    if (f.x < view.x0 - 20 || f.x > view.x1 + 20 || f.y < view.y0 - 20 || f.y > view.y1 + 20) continue;
+    const r = f.r * (1 + Math.sin(t * 3 + f.ph) * 0.15);
+    ctx.globalAlpha = 0.25; ctx.fillStyle = f.c; circle(ctx, f.x, f.y, r * 2.2);
+    ctx.globalAlpha = 1; circle(ctx, f.x, f.y, r);
+  }
+  // serpientes
+  const sorted = all.filter(s => s.alive && s.pts.length).sort((a, b) => (a === G.player) - (b === G.player));
+  for (const s of sorted) { if (!s.bb || s.bb.x1 < view.x0 - 60 || s.bb.x0 > view.x1 + 60 || s.bb.y1 < view.y0 - 60 || s.bb.y0 > view.y1 + 60) continue; drawSnake(ctx, s, t, view); }
+  ctx.textAlign = 'center'; ctx.font = 'bold 15px "Trebuchet MS", system-ui, sans-serif';
+  for (const s of sorted) {
+    if (s === G.player) continue; const h = s.pts[0];
+    if (h.x < view.x0 || h.x > view.x1 || h.y < view.y0 || h.y > view.y1) continue;
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillText(s.name + (s.remote && !s.isBot ? ' 🌐' : ''), h.x, h.y - widthOf(s.score) - 10);
+  }
+}
+function updateHUD(all) {
+  const P = G.player; if (!P) return;
+  $('#hs').textContent = Math.floor(P.score);
+  const list = all.filter(s => s.alive).sort((a, b) => b.score - a.score);
+  const rank = list.indexOf(P) + 1;
+  $('#hr').textContent = P.alive ? `Posición ${rank} de ${list.length} · Eliminaciones: ${G.kills}` : '';
+  const rows = list.slice(0, 10).map((s, i) => `<div class="r${s === P ? ' me' : ''}"><span>#${i + 1} ${esc(s.name)}</span><span>${Math.floor(s.score)}</span></div>`);
+  if (P.alive && rank > 10) rows.push(`<div class="r me"><span>#${rank} ${esc(P.name)}</span><span>${Math.floor(P.score)}</span></div>`);
+  $('#lbrows').innerHTML = rows.join('');
+  // minimapa
+  const m = $('#mm'), c = m.getContext('2d'), R = m.width / 2;
+  c.clearRect(0, 0, m.width, m.height);
+  c.fillStyle = 'rgba(10,14,26,.65)'; circle(c, R, R, R - 2); c.strokeStyle = '#ff3b5c'; c.lineWidth = 3; c.beginPath(); c.arc(R, R, R - 3, 0, 6.28); c.stroke();
+  for (const s of all) {
+    if (!s.alive || !s.pts.length) continue; const h = s.pts[0];
+    const x = R + h.x / WORLD_R * (R - 6), y = R + h.y / WORLD_R * (R - 6);
+    c.fillStyle = s === P ? '#fff' : s.remote && !s.isBot ? '#c04bff' : skinById(s.skin).colors[0];
+    circle(c, x, y, s === P ? 6 : 2 + Math.min(4, s.score / 300));
+  }
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+requestAnimationFrame(frame);
+
+/* ---------------- arranque ---------------- */
+(async function boot() {
+  let saved = null; try { saved = JSON.parse(LS.get('serp_account') || 'null'); } catch (e) { }
+  if (saved && saved.provider !== 'claude') { account = saved; await loadProfile(); show('menu'); }
+  else show('login');
+  // capacidades de la página (cuenta de Claude, guardado y online)
+  const [user, db] = await Promise.all([getClaude('user'), getClaude('db')]);
+  Cl.user = user; Cl.db = db;
+  if (user) $('#bClaude').style.display = 'flex';
+  if (saved && saved.provider === 'claude') {
+    if (user) { account = saved; await loadProfile(); if (screen === 'login') show('menu'); }
+  }
+  netConnect();
+})();
+</script>
+</body>
+</html>
